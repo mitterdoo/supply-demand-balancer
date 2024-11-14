@@ -1,4 +1,26 @@
+'''
+MIT License
 
+Copyright (c) 2024 Connor Ashcroft
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+'''
 
 class Machine:
 	def __init__(self, resource_name: str, target_throughput, service=None):
@@ -68,21 +90,6 @@ class Service:
 			pass
 		machine.service = None
 
-	'''
-	def scale_supply_demand(self):
-		smallest_efficiency = 1
-
-		for machine in self.machines:
-			if machine.efficiency < smallest_efficiency:
-				smallest_efficiency = machine.efficiency
-		
-		for machine in self.machines:
-			machine.set_efficiency(smallest_efficiency)
-		
-		self.efficiency = smallest_efficiency
-		'''
-	
-
 	def balance(self):
 		
 		efficiency = 1
@@ -134,26 +141,6 @@ class Resource:
 		self.producers = []
 		self.consumers = []
 
-	'''
-	def scale_supply_demand(self):
-		total_supply = sum([producer.effective_throughput for producer in self.producers])
-		total_demand = sum([consumer.effective_throughput for consumer in self.consumers])
-
-		if total_supply > total_demand:
-			# Scale down producers
-			for producer in self.producers:
-				if total_supply == 0:
-					producer.set_effective_throughput(0)
-				else:
-					producer.set_effective_throughput(producer.effective_throughput * (total_demand / total_supply))
-		else:
-			# Scale down consumers
-			for consumer in self.consumers:
-				if total_demand == 0:
-					consumer.set_effective_throughput(0)
-				else:
-					consumer.set_effective_throughput(consumer.effective_throughput * (total_supply / total_demand))
-	'''
 	def print(self):
 		print(f'[[ RESOURCE: "{self.name}" ]]')
 		effective_production = sum([machine.effective_throughput for machine in self.producers])
@@ -172,16 +159,8 @@ class Resource:
 
 	def balance(self) -> bool:
 		'''
-
 		Return `True` if any machine was affected by the balancing
 		If all resources return False, the System is perfectly balanced (as all things should be)
-
-		1. Iterate through producers and add their calculated effective throughputs
-			a. Calculate effective throughput of a producer by scaling down its target throughput by its least efficient neighbor's percentage.
-				Do not write value to machine.
-		2. Iterate through consumers using the same method as above
-		3. If surplus:
-			a. Scale down each consumer's effective throughput 
 		'''
 
 		production = 0
@@ -197,7 +176,7 @@ class Resource:
 				if neighbor.efficiency < efficiency:
 					efficiency = neighbor.efficiency
 				
-			# do not assign this efficiency, just use it as a temporary scalar unless told to write
+			# do not assign this efficiency, just use it as a temporary scalar
 
 			scaled_throughput = machine.target_throughput * efficiency
 
@@ -206,9 +185,6 @@ class Resource:
 			else:
 				consumption += scaled_throughput
 
-			
-			
-		
 		# calculate surplus/equilibrium/shortage
 
 		changed = False
@@ -240,8 +216,6 @@ class Resource:
 					changed = True if machine.set_efficiency(consumer_efficiency) else changed
 		
 		return changed
-		
-
 
 
 class System:
@@ -313,15 +287,6 @@ class System:
 
 		print(f'balanced in {count} iteration(s)')
 	
-	'''
-	def scale_supply_demand(self):
-		for _ in range(10):
-			for resource in self.resources.values():
-				resource.scale_supply_demand()
-			for service in self.services:
-				service.scale_supply_demand()
-	'''
-	
 
 if __name__ == '__main__':
 	system = System()
@@ -354,6 +319,4 @@ if __name__ == '__main__':
 	for service in system.services:
 		service.print()
 		print('')
-
-	hello = 2
 
