@@ -22,6 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
+'''
+If True, the solver will assume a resource with no consumers is being fully consumed.
+'''
+IGNORE_SURPLUS = True
+
 class Machine:
 	def __init__(self, resource_name: str, target_throughput, service=None):
 		self.target_throughput = target_throughput
@@ -143,18 +148,29 @@ class Resource:
 
 	def print(self):
 		print(f'[[ RESOURCE: "{self.name}" ]]')
+		target_production = sum([machine.target_throughput for machine in self.producers])
+		target_consumption = sum([machine.target_throughput for machine in self.consumers])
 		effective_production = sum([machine.effective_throughput for machine in self.producers])
 		effective_consumption = sum([machine.effective_throughput for machine in self.consumers])
 
-		if effective_production < effective_consumption:
-			state = 'shortage'
-		elif effective_production > effective_consumption:
-			state = 'surplus'
+
+		if target_production < target_consumption:
+			target_state = f'shortage of {target_consumption - target_production:,.2f}'
+		elif target_production > target_consumption:
+			target_state = f'surplus of {target_production - target_consumption:,.2f}'
 		else:
-			state = 'equal'
+			target_state = f'equal'
+
+		if effective_production < effective_consumption:
+			effective_state = f'shortage of {effective_consumption - effective_production:,.2f}'
+		elif effective_production > effective_consumption:
+			effective_state = f'surplus of {effective_production - effective_consumption:,.2f}'
+		else:
+			effective_state = f'equal'
 			# wouldn't this theoretically always be equal when the system gets balanced?
 		
-		print(f'\t{effective_production:,.2f} / {effective_consumption:,.2f} ({state})')
+		print(f'\tTarget: {target_production:,.2f} / {target_consumption:,.2f} ({target_state})')
+		print(f'\tEffective: {effective_production:,.2f} / {effective_consumption:,.2f} ({effective_state})')
 
 
 	def balance(self) -> bool:
@@ -166,6 +182,8 @@ class Resource:
 		production = 0
 		consumption = 0
 		
+		consumers = 0
+
 		machines = self.producers + self.consumers
 		for machine in machines:
 			efficiency = 1
@@ -183,7 +201,11 @@ class Resource:
 			if machine.producer:
 				production += scaled_throughput
 			else:
+				consumers += 1
 				consumption += scaled_throughput
+
+		if IGNORE_SURPLUS and consumers == 0:
+			consumption = production
 
 		# calculate surplus/equilibrium/shortage
 
@@ -272,7 +294,6 @@ class System:
 		self.cleanup_empty_services()
 		count = 0
 		for i in range(1000):
-			count += 1
 			if i == 999:
 				raise OverflowError('Could not solve the System. Make sure there are no feedback loops present.')
 			changed = False
@@ -281,6 +302,7 @@ class System:
 			
 			if not changed:
 				break
+			count += 1
 		
 		for service in self.services:
 			service.balance()
@@ -291,21 +313,58 @@ class System:
 if __name__ == '__main__':
 	system = System()
 	
-	iron_ore_producer = system.create_producer('Green', 0)
+	MINING_PRODUCTIVITY = 0.9
 
-	a = system.create_service('A',[
-		system.create_consumer('Green', 2),
-		system.create_producer('Blue', 4)
+	drills = {
+		'Iron ore': [
+			116,
+			78,
+			12,
+			49
+		],
+		'Copper ore': [
+			112,
+			53,
+			69,
+			76
+		],
+		'Stone': [
+			89,
+			20,
+			25
+		],
+		'Coal': [
+			84
+		]
+	}
+
+	# Ore drills
+	for name in drills:
+		drill_list = drills[name]
+		total = 0
+		for drill_count in drill_list:
+			total += drill_count * (1 + MINING_PRODUCTIVITY) * 30
+		system.create_producer(name, total)
+
+	# Smelting array
+	system.create_service('Iron smelting',[
+		system.create_consumer('Iron ore', 1800 * 14),
+		system.create_producer('Iron', 1800 * 14)
 	])
 
-	b = system.create_service('B',[
-		system.create_consumer('Blue', 5),
-		system.create_producer('Red', 5)
+	system.create_service('Copper smelting', [
+		system.create_consumer('Copper ore', 1800 * 4),
+		system.create_producer('Copper', 1800 * 4)
 	])
 
-	c = system.create_service('C', [
-		system.create_consumer('Blue', 3),
-		system.create_consumer('Green', 2)
+	system.create_service('Stone smelting', [
+		system.create_consumer('Stone', 1800 * 1),
+		system.create_producer('Stone brick', 1800 * 1)
+	])
+
+	system.create_service('Steel smelting', [
+		system.create_consumer('Iron', 1800*10),
+		system.create_producer('Steel', 1800 * 2)
 	])
 
 	system.balance()
