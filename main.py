@@ -34,6 +34,7 @@ class Machine:
 		self.efficiency = 1
 		self.resource = resource_name
 		self.service = service
+		self.is_bottleneck = False
 
 	def set_effective_throughput(self, throughput):
 		self.effective_throughput = throughput
@@ -98,12 +99,18 @@ class Service:
 	def balance(self):
 		
 		efficiency = 1
+		bottleneck = None
 		for machine in self.machines:
 			if machine.efficiency < efficiency:
 				efficiency = machine.efficiency
-
+				bottleneck = machine
+		
 		for machine in self.machines:
 			machine.set_efficiency(efficiency)
+			if machine == bottleneck and efficiency != 1:
+				machine.is_bottleneck = True
+			else:
+				machine.is_bottleneck = False
 
 	def __repr__(self):
 		return f'Service(\'{self.name}\')'
@@ -127,7 +134,11 @@ class Service:
 				machine_efficiency = 0
 			else:
 				machine_efficiency = effective/target
-			print(f'\t\t"{name}": {effective:,.2f} / {target:,.2f} ({machine_efficiency:.1%})')
+
+			line = f'\t\t"{name}": {effective:,.2f} / {target:,.2f} ({machine_efficiency:.1%})'
+			if consumer.is_bottleneck:
+				line = '!!! ' + line
+			print(line)
 
 		print('\tProduces:')
 		for producer in self.producers:
@@ -138,7 +149,10 @@ class Service:
 				machine_efficiency = 0
 			else:
 				machine_efficiency = effective/target
-			print(f'\t\t"{name}": {effective:,.2f} / {target:,.2f} ({machine_efficiency:.1%})')
+			line = f'\t\t"{name}": {effective:,.2f} / {target:,.2f} ({machine_efficiency:.1%})'
+			if producer.is_bottleneck:
+				line = '!!! ' + line
+			print(line)
 
 class Resource:
 	def __init__(self, name: str):
@@ -309,62 +323,58 @@ class System:
 
 		print(f'balanced in {count} iteration(s)')
 	
+def throughput_helper(machine_count, item_count, recipe_time, machine_base_speed=1, modules_speed=(0,0,0), modules_prod=(0,0,0)):
+	speed_1, speed_2, speed_3 = modules_speed
+	prod_1, prod_2, prod_3 = modules_prod
+
+	# speed_scale
+
+	# return machine_count * recipe_time * machine_base_speed * (1 )
 
 if __name__ == '__main__':
 	system = System()
 	
-	MINING_PRODUCTIVITY = 0.9
+	system.create_producer('Copper plate', 14400)
+	system.create_producer('LDS', 1800)
+	system.create_producer('Copper cable', 64800)
 
-	drills = {
-		'Iron ore': [
-			116,
-			78,
-			12,
-			49
-		],
-		'Copper ore': [
-			112,
-			53,
-			69,
-			76
-		],
-		'Stone': [
-			89,
-			20,
-			25
-		],
-		'Coal': [
-			84
-		]
-	}
+	system.create_producer('Iron plate', 14400)
+	system.create_producer('Iron stick', 3600)
+	system.create_producer('Iron gear wheel', 14400)
+	system.create_producer('Steel', 7200)
 
-	# Ore drills
-	for name in drills:
-		drill_list = drills[name]
-		total = 0
-		for drill_count in drill_list:
-			total += drill_count * (1 + MINING_PRODUCTIVITY) * 30
-		system.create_producer(name, total)
+	system.create_producer('Tungsten plate', 1800)
 
-	# Smelting array
-	system.create_service('Iron smelting',[
-		system.create_consumer('Iron ore', 1800 * 14),
-		system.create_producer('Iron', 1800 * 14)
+	system.create_producer('Concrete', 3600)
+
+	system.create_producer('Plastic', 400)
+
+	#######################
+
+	# system.create_producer('Sulfuric acid', 7164.9 * 2.30)
+	system.create_producer('Sulfuric acid', 1200 * 3 * 3)
+
+	system.create_producer('Coal', 5.75 * 48)
+
+
+	system.create_service('Electronic circuit', [
+		system.create_consumer('Iron plate', 15210),
+		system.create_consumer('Copper cable', 45630),
+		system.create_producer('Electronic circuit', 18860.4)
 	])
 
-	system.create_service('Copper smelting', [
-		system.create_consumer('Copper ore', 1800 * 4),
-		system.create_producer('Copper', 1800 * 4)
+	system.create_service('Advanced circuit', [
+		system.create_consumer('Electronic circuit', 4725),
+		system.create_consumer('Copper cable', 9450),
+		system.create_consumer('Plastic', 4725),
+		system.create_producer('Advanced circuit', 2929.5)
 	])
 
-	system.create_service('Stone smelting', [
-		system.create_consumer('Stone', 1800 * 1),
-		system.create_producer('Stone brick', 1800 * 1)
-	])
-
-	system.create_service('Steel smelting', [
-		system.create_consumer('Iron', 1800*10),
-		system.create_producer('Steel', 1800 * 2)
+	system.create_service('Processing unit', [
+		system.create_consumer('Electronic circuit', 4320),
+		system.create_consumer('Advanced circuit', 432),
+		system.create_consumer('Sulfuric acid', 1080),
+		system.create_producer('Processing unit', 267.84)
 	])
 
 	system.balance()
