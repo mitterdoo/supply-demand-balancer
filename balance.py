@@ -25,7 +25,7 @@ SOFTWARE.
 '''
 If True, the solver will assume a resource with no consumers is being fully consumed.
 '''
-IGNORE_SURPLUS = True
+IGNORE_SURPLUS = False
 
 class Machine:
 	def __init__(self, resource_name: str, target_throughput, service=None):
@@ -322,6 +322,18 @@ class System:
 			service.balance()
 
 		print(f'balanced in {count} iteration(s)')
+
+	def print(self):
+		for resource in self.resources.values():
+			resource.print()
+		print('')
+	
+		print('=========================')
+
+		for service in self.services:
+			service.print()
+			print('')
+
 	
 def throughput_helper(machine_count, item_count, recipe_time, machine_base_speed=1, modules_speed=(0,0,0), modules_prod=(0,0,0)):
 	speed_1, speed_2, speed_3 = modules_speed
